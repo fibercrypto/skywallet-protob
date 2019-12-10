@@ -1,13 +1,14 @@
 .DEFAULT_GOAL := help
 .PHONY: help all clean install
 .PHONY: build-go build-js build-c build-py
-.PHONY: install-deps-go install-deps-js install-deps-nanopb install-protoc
+.PHONY: install-deps-go install-deps-js install-deps-nanopb
+.PHONY: install-protoc install-protoc-linux install-protoc-osx install-protoc-win32
 .PHONY: clean-go clean-js clean-c clean-py
 
 REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 UNAME_S  = $(shell uname -s)
-PYTHON  ?= python
+PYTHON  ?= python3
 PIP     ?= pip3
 PIPARGS ?=
 GOPATH  ?= $(HOME)/go
@@ -20,6 +21,11 @@ else
   endif
   ifeq ($(UNAME_S),Darwin)
     OS_NAME=osx
+  endif
+  UNAME_W = $(shell uname -s | cut -d "_" -f1 )
+  ifeq ($(UNAME_W),MINGW64)
+    OS_NAME=win32
+	PROTOC_ZIP ?= protoc-$(PROTOC_VERSION)-$(OS_NAME).zip
   endif
 endif
 
@@ -66,13 +72,19 @@ OUT_C  ?= $(PROTOB_C_DIR)
 
 all: build-go build-js build-c build-py ## Generate protobuf classes for all languages
 
-install: install-deps-go install-deps-js install-deps-nanopb install-protoc ## Install protocol buffer tools
+install: install-deps-go install-deps-js install-deps-nanopb install-protoc-$(OS_NAME) ## Install protocol buffer tools
 
 clean: clean-go clean-js clean-c clean-py ## Delete temporary and output files
 	rm -rf \
 		$$( find . -name '*.swp' ) \
 		$$( find . -name '*.swo' ) \
 		$$( find . -name '*.orig' )
+
+install-protoc-linux: install-protoc
+
+install-protoc-osx: install-protoc
+
+install-protoc-win32: /usr/local/bin/protoc.exe
 
 install-protoc: /usr/local/bin/protoc
 
@@ -83,11 +95,19 @@ install-protoc: /usr/local/bin/protoc
 	sudo unzip -o $(PROTOC_ZIP) -d /usr/local bin/protoc
 	rm -f $(PROTOC_ZIP)
 
+/usr/local/bin/protoc.exe:
+	echo "Downloading protobuf from $(PROTOC_URL)"
+	curl -OL $(PROTOC_URL)
+	echo "Installing protoc"
+	mkdir -p /usr/local/bin
+	sudo unzip -o $(PROTOC_ZIP) -d /usr/local bin/protoc.exe
+	rm -f $(PROTOC_ZIP)
+
 #----------------
 # Go lang
 #----------------
 
-install-deps-go: install-protoc ## Install tools to generate protobuf classes for go lang
+install-deps-go: install-protoc-$(OS_NAME) ## Install tools to generate protobuf classes for go lang
 	@if [ -e $(PROTOB_SRC_DIR) ] ; then \
 		echo 'Detected $(PROTOC_GOGO_URL) on local file system. Checking v1.2.0' ; \
 		cd $(PROTOB_SRC_DIR) && git checkout v1.2.0 ; \
@@ -129,7 +149,7 @@ clean-js:
 # C with nanopb
 #----------------
 
-install-deps-nanopb: install-protoc ## Install tools to generate protobuf classes for C and Python with nanopb
+install-deps-nanopb: install-protoc-$(OS_NAME) ## Install tools to generate protobuf classes for C and Python with nanopb
 	make -C $(PROTOC_NANOPBGEN_DIR)/proto/
 	$(PIP) install $(PIPARGS) "protobuf==$(PROTOC_VERSION)" ecdsa
 
