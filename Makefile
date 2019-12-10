@@ -86,8 +86,6 @@ install-protoc-osx: install-protoc
 
 install-protoc-win32: /usr/local/bin/protoc.exe
 
-#install-protoc-win64: /usr/local/bin/protoc.exe
-
 install-protoc: /usr/local/bin/protoc
 
 /usr/local/bin/protoc:
@@ -104,7 +102,6 @@ install-protoc: /usr/local/bin/protoc
 	mkdir -p /usr/local/bin
 	sudo unzip -o $(PROTOC_ZIP) -d /usr/local bin/protoc.exe
 	rm -f $(PROTOC_ZIP)
-
 
 #----------------
 # Go lang
